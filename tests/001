@@ -1,0 +1,98 @@
+MALWARE I
+=========
+2012-09-26  
+Ivo Kubjas  
+First home lab assignment
+
+Working environment (for now):
+------------------------------
+Here are the procedures for setting up quite clean and secure working
+environment:
+ 
+ 1. Installed TrueCrypt and created encrypted virtual filesystem.
+ 2. Installed Oracle Virtualbox and addons.
+ 3. Configured laptop to allow *true* hardware virtualization. On newer
+    Thinkpads this is possible through BIOS.
+    This should confuse malware as they believe to be working on host system.
+  * Set up Openvpn in host and create tunnel to server (won't to this because
+    my Openvpn server is a production machine and I don't want it to be DDOSed) 
+ 4. Set up Lubuntu x64 in Virtualbox.
+    I chose Lubuntu because I am quite fluent in Ubuntu but I don't need all the
+    junk it installs by default. These are on host. Also, Openbox with LXDE is
+    relatively fast and consumes small amount of memory and CPU cycles.
+ 5. As the default browser on Lubuntu is `chromium` and the Internets thinks that
+    it is not secure enough for using with Tor, installed Tor browser bundle.
+ 6. Started `tor-bundle` with `firefox`.
+ 7. Profit!
+
+Search results
+--------------
+
+Now, we have to find some sites where we could find some interesting results.  
+For that:
+
+ 1. Search Google for *ddos tor onion* as Tor documentation speaks something
+    about The Hidden Network.  
+    Google is quite delicate about hacking matters and these sites are probably
+    hard to find, so let's turn to *.onion* domain space.
+ 2. Found [The Hidden Wiki][wiki].
+ 3. Moved on to [TORDIR][tordir]. There let's choose *Hacking and Related*.
+ 4. Results:
+    * Credit card information from [random][r1]:
+       The following PayPal accounts are for sale, email `paypals@tormail.org` for  
+       more info.  
+       $220 USD 6.5 BTC  
+       $410 USD 10BTC  
+       $580 USD 13BTC
+    * Banks accounts and DDOS from [CardersPlanet][r2]:
+       Bank accounts:  
+       Worldwide accounts with balances: 30% from balance.  
+       DDOS:  
+       Standart host or domain = 100$\day  
+       High-risk domain or network (large companies, non-political
+       organizations) = 150$\day  
+       Political or governmental organization = ask me via TorPM or ICQ.  
+    * [Fake ID][fid]:
+       Romania:
+        -ID Card: 800 Euro  
+        -Drivers License: 800 Euro  
+        -Passport: 2500 Euro  
+       Czech:  
+        -ID Card: 1000 Euro  
+        -EU Driver License: 1000 Euro  
+       Lithuania:  
+        -ID Card: 1150 Euro  
+        -EU Drivers License: 1150 Euro  
+        -Passport without chip: 2250 Euro  
+        -Passport with chip: 2650 Euro  
+       EU Passports (New models with biometric chip):  
+        -Denmark: 3150 Euro  
+        -Netherlands: 3150 Euro  
+       EU Drivers Licenses:  
+        -Netherlands: 1150 Euro  
+        -Norway: 1150 Euro
+        -Denmark: 1150 Euro
+        -UK (England): 1150 Euro
+    * [Hitman][hman] (there is alot of these, prices are the same):
+       Price $20,000
+    * [Spammer][spammer]:
+        1O BTC = 1,000,000 SUCCESSFULLY SENT EMAILS
+    * There was also a site selling SSH access to machines but it is currently down.       
+    * DDOSers provide probably spam services also through personal request.
+ 5. It seems that some of the webpages are down. Trying other means to get the
+    result.
+    * [Deep Web][dw]:
+      - Fun stuff: [He][dangler] steals stuff for you.
+    * etc etc. Tor and hidden services are currently way too slow to work with but
+    * Hidden Wiki and other directories provide links to all kind of services (file
+      sharing, CP, drugs and so on).
+
+
+[wiki]: http://kpvz7ki2v5agwt35.onion/wiki/index.php/Main_Page "The Hidden Wiki"
+[tordir]: http://dppmfxaacucguzpc.onion "TORDIR" 
+[dw]: http://ekwreugkil5ncyyh.onion/ "Deep Web"
+[r1]: http://ivu4flvacblhx2lm.onion/
+[r2]: http://wihwaoykcdzabadd.onion/ "CardersPlanet"
+[fid]: http://g6lfrbqd3krju3ek.onion/prices.html
+[hman]: http://iacgq6y2j2nfudy7.onion/
+[dangler]: http://627kx22vati6uqkw.onion/index.php "Dangler"
