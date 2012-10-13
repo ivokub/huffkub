@@ -58,6 +58,7 @@ void parse_args(int argc, char **argv) {
 				"\t -o\t\tWrite output to stdout (exclusive with -d)\n"
 				"\t -f FILE\tRead input from FILE (exclusive with -i)\n"
 				"\t -d FILE\tWrite output to FILE (exclusive with -o)\n"
+				"\t -v\t\tVerbose output (only when -o is not set)\n"
 				"\t -h\t\tPrint this help message\n");
 			exit(0);
 		}
@@ -74,9 +75,9 @@ int main(int argc, char **argv) {
 	parse_args(argc, argv);
 
 	if (opts & PACK) {
-		calc_prob();
+		compress();
 	}
-	if (opts & VERBOSE)
+	if (opts & VERBOSE | FILEOUT)
 		verbose_print();
 	return 0;
 }
