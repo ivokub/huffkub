@@ -1,40 +1,36 @@
 #define CHAR 256
 
 /* 
-*   Leaf and hub.
-*   
-*   Leafs are meant for characters and hubs
-*   are for junctions
-*
-*/
+ *   Leaf and hub.
+ *
+ *   Leafs are meant for characters and hubs
+ *   are for junctions
+ *
+ */
 
 #ifndef STRUCT_VAR
 #define STRUCT_VAR
-typedef struct nodeleaf 
-{
-  struct nodehub *parent;
-  int freq;
-  unsigned char ch;
+typedef struct nodeleaf {
+	struct nodehub *parent;
+	int freq;
+	unsigned char ch;
 } leaf;
 
-typedef struct nodehub
-{
-  struct nodehub *parent;
-  int freq;
-  void *left; // as childs can be either leafs or hubs, use generic pointer
-  void *right;
+typedef struct nodehub {
+	struct nodehub *parent;
+	int freq;
+	void *left; // as childs can be either leafs or hubs, use generic pointer
+	void *right;
 } hub;
 
-typedef struct node
-{
-  struct node *parent;
-  int freq;
+typedef struct node {
+	struct node *parent;
+	int freq;
 } node;
 
-typedef struct code
-{
-  int len;
-  int ch;
+typedef struct code {
+	int len;
+	int ch;
 } code;
 
 // Root node
