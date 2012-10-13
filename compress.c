@@ -1,9 +1,14 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+
 #include "struct.h"
 #include "huffkub.h"
 #include "compress.h"
+
+#ifdef DEBUG
+#include <time.h>
+#endif
 
 int create_leafs(char * blob[]) {
 	int i;
@@ -37,7 +42,7 @@ node * create_tree(leaf ** leafarray) {
 		tree[0] = NULL;
 		tree[1] = NULL;
 		int k, j = 1;
-		// move only previous nodes and then tree = &tree[1] ?
+		// move only previous nodes one entry forward and then tree = &tree[1] ?
 		while (j + 1 < left && (thishub->freq >= tree[j + 1]->freq))
 			j++;
 		for (k = 2; k <= j; k++)
@@ -118,6 +123,7 @@ code * calc_code(leaf * bytechar) {
 			}
 			bytecode->len++;
 			//bytecode->ch = reverse(bytecode->ch, bytecode->len);
+			codetable[bytechar->ch] = bytecode;
 			return bytecode;
 		}
 
@@ -144,35 +150,139 @@ void print_code(code * bytecode) {
 	printf("\n");
 }
 
+int fbitout(code * letter, FILE * fout) {
+	int i = 0;
+	int tempch = letter->ch;
+	while (i++ < letter->len) {
+		outbuf *= 2;
+		outbuf += tempch % 2;
+		tempch /= 2;
+		outbuf_len++;
+		if (outbuf_len == 8 * sizeof(char)) {
+			append_char(outbuf, fout);
+			outbuf_len = 0;
+		}
+
+	}
+}
+
+void append_char(char ch, FILE * fout) {
+	int i = 0;
+	int j = 0;
+	while (writebuf[i] != 0)
+		i++;
+	if (i == blksize) {
+		fwrite(writebuf, sizeof(char), blksize, fout);
+		for (j = 0; j < blksize; writebuf[j++] = 0)
+			;
+		i = 0;
+	}
+	writebuf[i] = ch;
+}
+
+char pad(FILE * fout) {
+	int i;
+	while (outbuf_len % 8) {
+		outbuf *= 2;
+		outbuf_len++;
+	}
+	append_char(outbuf, fout);
+	for (i = 0; writebuf[i] != 0; i++)
+		;
+	fwrite(writebuf, sizeof(char), i, fout);
+}
+
 int calc_prob() {
+	// Streams opening
 	char * buffer = calloc(blksize, sizeof(char));
-	if (buffer == NULL)
+	if (!buffer)
 		error(4, 0, "Cannot allocate memory!");
-	FILE *temp, *in;
+	FILE *in;
 	int total = 0;
-	if (opts & STDIN) {
-		in = stdin;
-		temp = tmpfile();
-		if (!temp)
-			error(3, 0, "Cannot create temporary file!");
-	} else {
+	if (opts & FILEIN) {
 		in = fopen(inputfile, "r");
 		if (!in)
 			error(3, 0, "Cannot open input file!");
 		temp = in;
+	} else {
+		in = stdin;
+		temp = tmpfile();
+		if (!temp)
+			error(3, 0, "Cannot create temporary file!");
 	}
-	while ((fgets(buffer, blksize, in) != NULL)) {
-		if (opts & STDIN)
+	// Frequency counting and leaf making
+	while (fgets(buffer, blksize, in)) {
+		if (opts & STDIN || ~opts & FILEIN)
 			fputs(buffer, temp);
 		total += create_leafs(&buffer);
 	}
 	if (ferror(temp))
 		error(3, 0, "Couldn't write to temporary file!");
 	free(buffer);
-	if (opts & STDIN)
-		fclose(temp);
 	fclose(in);
-	hub * tip = (hub *) create_tree(chararray);
+	// Tree growth
+	tip = (hub *) create_tree(chararray);
 	return total;
+}
+
+void calc_codes() {
+	int i = 0;
+	leaf * currentleaf;
+	for (i = 0; i < CHAR; i++) {
+		if ((currentleaf = chararray[i]) != NULL) {
+			calc_code(currentleaf);
+		}
+	}
+}
+
+void compress() {
+	clock_t start = clock();
+	calc_prob();
+#ifdef DEBUG
+	printf("Calc prob:\t%f\n", (double) (clock()-start)/ (CLOCKS_PER_SEC / 1000.0));
+#endif
+	calc_codes();
+#ifdef DEBUG
+	printf("Calc codes:\t%f\n", (double) (clock()-start)/ (CLOCKS_PER_SEC / 1000.0));
+#endif
+	outbuf_len = 0;
+	outbuf = 0;
+	writebuf = calloc(blksize, sizeof(char));
+	int i, j;
+	FILE * in, *out;
+	char * buffer = calloc(blksize, sizeof(char));
+	if (!buffer)
+		error(4, 0, "Cannot allocate memory!");
+	if (!writebuf)
+		error(4, 0, "Cannot allocate memory!");
+	if (opts & FILEIN) {
+		in = fopen(inputfile, "r");
+		if (!in)
+			error(3, 0, "Cannot open input file!");
+	} else {
+		in = temp;
+		rewind(in);
+	}
+	if (opts & FILEOUT) {
+		out = fopen(outputfile, "w");
+		if (!out)
+			error(3, 0, "Cannot open output file!");
+	} else
+		out = stdout;
+#ifdef DEBUG
+	printf("Opening:\t%f\n", (double) (clock()-start)/ (CLOCKS_PER_SEC / 1000.0));
+#endif
+
+	while (fgets(buffer, blksize, in)) {
+		for (j = 0; buffer[j]; j++) {
+			fbitout(codetable[(unsigned char) buffer[j]], out);
+		}
+	}
+#ifdef DEBUG
+	printf("Bitwrite:\t%f\n", (double) (clock()-start)/ (CLOCKS_PER_SEC / 1000.0));
+#endif
+	pad(out);
+	fclose(in);
+	fclose(out);
 }
 
