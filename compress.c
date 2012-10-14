@@ -6,10 +6,6 @@
 #include "huffkub.h"
 #include "compress.h"
 
-#ifdef DEBUG
-#include <time.h>
-#endif
-
 int create_leafs(char * blob[]) {
 	int i;
 	int len = strlen(*blob);
@@ -26,8 +22,8 @@ hub * create_hub(leaf * c1, leaf * c2) {
 		error(4, 0, "Cannot allocate memory!");
 	*thishub = (hub) {.parent = &root, .left = c1, .right = c2,
 				.freq = c1->freq + c2->freq};
-			return thishub;
-		}
+	return thishub;
+}
 
 node * create_tree(leaf ** leafarray) {
 	int i;
@@ -110,22 +106,23 @@ code * calc_code(leaf * bytechar) {
 	if (bytecode == NULL)
 		error(4, 0, "Cannot allocate memory!");
 	*bytecode = (code) {.ch = 0, .len = 0};
-			if (bytechar->parent->right == bytechar) {
-				bytecode->ch += 1;
-			}
-			while (parentnode->parent != &root) {
-				bytecode->ch *= 2;
-				if (parentnode->parent->right == parentnode) {
-					bytecode->ch += 1;
-				}
-				bytecode->len++;
-				parentnode = parentnode->parent;
-			}
-			bytecode->len++;
-			//bytecode->ch = reverse(bytecode->ch, bytecode->len);
-			codetable[bytechar->ch] = bytecode;
-			return bytecode;
+	if (bytechar->parent->right == bytechar) {
+		bytecode->ch += 1;
+	}
+	while (parentnode->parent != &root) {
+		bytecode->ch *= 2;
+		if (parentnode->parent->right == parentnode) {
+			bytecode->ch += 1;
 		}
+		bytecode->len++;
+		parentnode = parentnode->parent;
+	}
+	bytecode->len++;
+	//bytecode->ch = reverse(bytecode->ch, bytecode->len);
+	codetable[bytechar->ch] = bytecode;
+	outbuf_len = (outbuf_len + bytecode->len*bytechar->freq) % 8;
+	return bytecode;
+}
 
 int reverse(int bytecode, int len) {
 	// Ugly, but should be platform independent
@@ -154,9 +151,11 @@ int fbitout(code * letter, FILE * fout) {
 	int i = 0;
 	int tempch = letter->ch;
 	while (i++ < letter->len) {
-		outbuf *= 2;
-		outbuf += tempch % 2;
-		tempch /= 2;
+	// Bit shifting may differ on systems but I am looking for speed
+	// One idea is to shift exactly enough bits to fill the byte buffer
+		outbuf <<= 1;
+		outbuf += tempch & 0x1;
+		tempch >>= 1;
 		outbuf_len++;
 		if (outbuf_len == 8 * sizeof(char)) {
 			append_char(outbuf, fout);
@@ -169,12 +168,11 @@ int fbitout(code * letter, FILE * fout) {
 void append_char(char ch, FILE * fout) {
 	int i = 0;
 	int j = 0;
-	while (writebuf[i] != 0)
+	while (writebuf[i] != 0)   // if we save index then we don't have to look for null pointer and fill the array with nulls
 		i++;
 	if (i == blksize) {
 		fwrite(writebuf, sizeof(char), blksize, fout);
-		for (j = 0; j < blksize; writebuf[j++] = 0)
-			;
+		for (j = 0; j < blksize; writebuf[j++] = 0);
 		i = 0;
 	}
 	writebuf[i] = ch;
@@ -235,17 +233,51 @@ void calc_codes() {
 	}
 }
 
-void compress() {
-	clock_t start = clock();
-	calc_prob();
-#ifdef DEBUG
-	printf("Calc prob:\t%f\n", (double) (clock()-start)/ (CLOCKS_PER_SEC / 1000.0));
-#endif
-	calc_codes();
-#ifdef DEBUG
-	printf("Calc codes:\t%f\n", (double) (clock()-start)/ (CLOCKS_PER_SEC / 1000.0));
-#endif
+char * create_graph(hub * start){
+	char graph[CHAR];
+	int pos;
+}
+
+compresscode * create_codetable(){
+	int i, j = 0;
+	compresscode this;
+	compresscode *table = calloc(CHAR+1, sizeof(compresscode));
+	for (i=0; i<CHAR; i++){
+		if (codetable[i]!=NULL){
+			this = (compresscode) {.code = codetable[i]->ch, .len = codetable[i]->len, .ch = i};
+			table[j++] = this;
+		}
+	}
+	table[CHAR+1].code = j;
+	return table;
+}
+
+void write_meta(FILE * fout){
+/* *
+ *  Header file should be:
+ *  1 byte padding size (max pad size = 8)
+ *  2 bytes for describing graph size
+ *  n bytes for graph (array of n chars) // This should be possible with bits also?!
+ *  m bytes for characters order (array of m chars)
+ *  -------
+ *  TOTAL about 2x
+ *  REST
+*/
+
+
+	int padsize = outbuf_len;
+	char * graph = create_graph(tip);
 	outbuf_len = 0;
+	fputc(8-padsize, fout);
+	compresscode * table = create_codetable();
+	fputc(table[CHAR+1].code, fout);
+	fwrite(table, sizeof(compresscode), table[CHAR+1].code, fout);
+
+}
+
+void compress() {
+	calc_prob();
+	calc_codes();
 	outbuf = 0;
 	writebuf = calloc(blksize, sizeof(char));
 	int i, j;
@@ -269,18 +301,12 @@ void compress() {
 			error(3, 0, "Cannot open output file!");
 	} else
 		out = stdout;
-#ifdef DEBUG
-	printf("Opening:\t%f\n", (double) (clock()-start)/ (CLOCKS_PER_SEC / 1000.0));
-#endif
-
+	write_meta(out);
 	while (fgets(buffer, blksize, in)) {
 		for (j = 0; buffer[j]; j++) {
 			fbitout(codetable[(unsigned char) buffer[j]], out);
 		}
 	}
-#ifdef DEBUG
-	printf("Bitwrite:\t%f\n", (double) (clock()-start)/ (CLOCKS_PER_SEC / 1000.0));
-#endif
 	pad(out);
 	fclose(in);
 	fclose(out);
