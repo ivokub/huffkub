@@ -77,7 +77,7 @@ int main(int argc, char **argv) {
 	if (opts & PACK) {
 		compress();
 	}
-	if (opts & VERBOSE | FILEOUT)
+	if (opts & VERBOSE && opts & FILEOUT)
 		verbose_print();
 	return 0;
 }
