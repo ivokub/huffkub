@@ -124,18 +124,6 @@ code * calc_code(leaf * bytechar) {
 	return bytecode;
 }
 
-int reverse(int bytecode, int len) {
-	// Ugly, but should be platform independent
-	int reversed = 0, i = 0;
-	while (i < len) {
-		reversed += bytecode % 2;
-		bytecode / 2;
-		reversed * 2;
-		i++;
-	}
-	return reversed;
-}
-
 void print_code(code * bytecode) {
 	int i = 0, bitcode = bytecode->ch;
 
@@ -161,7 +149,6 @@ int fbitout(code * letter, FILE * fout) {
 			append_char(outbuf, fout);
 			outbuf_len = 0;
 		}
-
 	}
 }
 
@@ -233,11 +220,6 @@ void calc_codes() {
 	}
 }
 
-char * create_graph(hub * start){
-	char graph[CHAR];
-	int pos;
-}
-
 compresscode * create_codetable(){
 	int i, j = 0;
 	compresscode this;
@@ -266,7 +248,6 @@ void write_meta(FILE * fout){
 
 
 	int padsize = outbuf_len;
-	char * graph = create_graph(tip);
 	outbuf_len = 0;
 	fputc(8-padsize, fout);
 	compresscode * table = create_codetable();

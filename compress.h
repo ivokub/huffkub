@@ -5,12 +5,10 @@ int create_leafs(char *[]);						// From string to leafs
 node * create_tree(leaf **);					// Calculate tree using Huffmann algorithm
 hub * create_hub(leaf *, leaf *);				// Crete parent hub for two leafs
 int calc_prob();								// Open streams, calculate trees
-int reverse(int, int);							// Reverse code (not necessary?)
 void fill_node(unsigned char);					// Character frequency counter and leaf creater
 void print_code(code *);						// Code printing for verbose
 int fbitout(code *, FILE *);					// Bit-by-bit output writing
 void append_char(char, FILE *);					// Writebuffer appender and streamout writer
-char * create_graph(hub *);						// Unused
 void calc_codes();								// Calculate all coding codes at once
 char pad(FILE *);								// Write padding (to achieve full byte)
 void compress();								// Put everything together
