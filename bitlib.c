@@ -1,13 +1,10 @@
-/*
- * bitlib.c
- *
- *  Created on: Oct 22, 2012
- *      Author: ivo
- */
+#include <stdio.h>
+#include <stdlib.h>
 #include "bitlib.h"
 
 int setbitread(FILE * fin){
 	bitbuffer = calloc(8, sizeof(char));
+	bitbuffer2 = calloc(8, sizeof(char));
 	char c;
 	int i;
 	fbitstream = fin;
@@ -17,6 +14,10 @@ int setbitread(FILE * fin){
 		bitbuffer[i] = (c & (0x1 << i)) >> i;
 	}
 	bitindex = 0;
+	for (i=0; i<3; i++){
+		padsize <<= 1;
+		padsize |= readbit();
+	}
 	return 0;
 }
 
@@ -32,6 +33,7 @@ char readbit(){
 		bitindex = 0;
 	}
 	return bitbuffer[7-bitindex++];
+
 }
 
 void setbitwrite(FILE * fout){
@@ -64,10 +66,21 @@ int write_char_bit(unsigned char c){
 
 char pad(FILE * fout){
 	int ret;
+	if (bitindex)
 	if ((ret = fputc(*bitbuffer, fbitstream)) == EOF) return 1;
 	*bitbuffer = 0;
+	padsize = 8-bitindex;
 	bitindex = 0;
 	return 0;
 }
+
+int writepadsize(FILE * fout){
+	rewind(fout);
+	int c = fgetc(fout);
+	rewind(fout);
+	fputc(c|(padsize<<5), fout);
+	return padsize;
+}
+
 
 

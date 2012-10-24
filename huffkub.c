@@ -1,3 +1,7 @@
+// Todo: 	how to cast pointer to struct and access its element:
+// 			eg. if p is pointer to node, then I am using:
+//			((leaf *) p)->ch, but there must be a more beautiful way?
+
 #include <stdio.h>
 #include "struct.h"
 #include <stdlib.h>
@@ -77,7 +81,10 @@ int main(int argc, char **argv) {
 	if (opts & PACK) {
 		compress();
 	}
-	if (opts & VERBOSE && opts & FILEOUT)
+	if (opts & UNPACK) {
+		extract();
+	}
+	if ((opts & VERBOSE) && (opts & FILEOUT))
 		verbose_print();
 	return 0;
 }

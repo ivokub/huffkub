@@ -5,6 +5,7 @@
 #include "struct.h"
 #include "huffkub.h"
 #include "compress.h"
+#include "bitlib.h"
 
 int create_leafs(char * blob[]) {
 	int i;
@@ -20,12 +21,12 @@ hub * create_hub(leaf * c1, leaf * c2) {
 	thishub = (hub *) malloc(sizeof(hub));
 	if (thishub == NULL)
 		error(4, 0, "Cannot allocate memory!");
-	*thishub = (hub) {.parent = &root, .left = c1, .right = c2,
+	*thishub = (hub) {.type = 2, .parent = &root, .left = (node *) c1, .right = (node *) c2,
 				.freq = c1->freq + c2->freq};
 	return thishub;
 }
 
-node * create_tree(leaf ** leafarray) {
+hub * create_tree(leaf ** leafarray) {
 	int i;
 	node * tree[CHAR];
 	hub * thishub;
@@ -49,7 +50,7 @@ node * create_tree(leaf ** leafarray) {
 		tree[left--] = NULL;
 	}
 	// should free tree array
-	return tree[0];
+	return (hub *) tree[0];
 }
 
 void fill_node(unsigned char c) {
@@ -58,7 +59,8 @@ void fill_node(unsigned char c) {
 		thisnode = (leaf *) malloc(sizeof(leaf));
 		if (thisnode == NULL)
 			error(4, 0, "Cannot allocate memory!");
-		thisnode->parent = &root;
+		thisnode->type = 1;
+                thisnode->parent = &root;
 		chararray[c] = thisnode;
 	}
 	thisnode->ch = c;
@@ -67,6 +69,14 @@ void fill_node(unsigned char c) {
 }
 
 int node_cmp_ll(const void *c1, const void *c2) {
+	if (*(void **) c1 == NULL) return -1;
+	if (*(void **) c2 == NULL) return 1;
+	if ((*(node **) c1)->type == 1){
+		if ((*(leaf **) c1)->ch == 255) return -1;
+	}
+	if ((*(node **) c2)->type == 1){
+		if ((*(leaf **) c2)->ch == 255) return 1;
+	}
 	if ((*(node **) c1)->freq > (*(node **) c2)->freq)
 		return 1;
 	else if ((*(node **) c1)->freq < (*(node **) c2)->freq)
@@ -91,8 +101,8 @@ int clean_leaf_array(leaf ** leafarray, int total) {
 
 int sort_leaf(leaf * leafarray[], int length) {
 	int unique = 0;
+	qsort(leafarray, length, sizeof(leaf *), node_cmp_ll);
 	int total = clean_leaf_array(leafarray, length);
-	qsort(leafarray, total, sizeof(leaf *), node_cmp_ll);
 	while (leafarray[unique] != NULL) {
 		unique++;
 	}
@@ -106,19 +116,18 @@ code * calc_code(leaf * bytechar) {
 	if (bytecode == NULL)
 		error(4, 0, "Cannot allocate memory!");
 	*bytecode = (code) {.ch = 0, .len = 0};
-	if (bytechar->parent->right == bytechar) {
+	if ((leaf *) bytechar->parent->right == bytechar) {
 		bytecode->ch += 1;
 	}
 	while (parentnode->parent != &root) {
 		bytecode->ch *= 2;
-		if (parentnode->parent->right == parentnode) {
+		if ((hub *) parentnode->parent->right == parentnode) {
 			bytecode->ch += 1;
 		}
 		bytecode->len++;
 		parentnode = parentnode->parent;
 	}
 	bytecode->len++;
-	//bytecode->ch = reverse(bytecode->ch, bytecode->len);
 	codetable[bytechar->ch] = bytecode;
 	outbuf_len = (outbuf_len + bytecode->len*bytechar->freq) % 8;
 	return bytecode;
@@ -135,51 +144,33 @@ void print_code(code * bytecode) {
 	printf("\n");
 }
 
-int fbitout(code * letter, FILE * fout) {
+int fbitout(code * letter, FILE * fout){
 	int i = 0;
 	int tempch = letter->ch;
-	while (i++ < letter->len) {
-	// Bit shifting may differ on systems but I am looking for speed
-	// One idea is to shift exactly enough bits to fill the byte buffer
-		outbuf <<= 1;
-		outbuf += tempch & 0x1;
+	while(i++ < letter->len){
+		writebit((char) tempch & 0x1);
 		tempch >>= 1;
-		outbuf_len++;
-		if (outbuf_len == 8 * sizeof(char)) {
-			append_char(outbuf, fout);
-			outbuf_len = 0;
-		}
 	}
+	return 0;
 }
 
-void append_char(char ch, FILE * fout) {
-	int i = 0;
-	int j = 0;
-	while (writebuf[i] != 0)   // if we save index then we don't have to look for null pointer and fill the array with nulls
-		i++;
-	if (i == blksize) {
-		fwrite(writebuf, sizeof(char), blksize, fout);
-		for (j = 0; j < blksize; writebuf[j++] = 0);
-		i = 0;
-	}
-	writebuf[i] = ch;
-}
-
-char pad(FILE * fout) {
-	int i;
-	while (outbuf_len % 8) {
-		outbuf *= 2;
-		outbuf_len++;
-	}
-	append_char(outbuf, fout);
-	for (i = 0; writebuf[i] != 0; i++)
-		;
-	fwrite(writebuf, sizeof(char), i, fout);
-}
+//void append_char(char ch, FILE * fout) {
+//	int i = 0;
+//	int j = 0;
+//	while (writebuf[i] != 0)   // if we save index then we don't have to look for null pointer and fill the array with nulls
+//		i++;
+//	if (i == blksize) {
+//		fwrite(writebuf, sizeof(char), blksize, fout);
+//		for (j = 0; j < blksize; writebuf[j++] = 0);
+//		i = 0;
+//	}
+//	writebuf[i] = ch;
+//}
 
 int calc_prob() {
 	// Streams opening
 	char * buffer = calloc(blksize, sizeof(char));
+	char c;
 	if (!buffer)
 		error(4, 0, "Cannot allocate memory!");
 	FILE *in;
@@ -196,17 +187,16 @@ int calc_prob() {
 			error(3, 0, "Cannot create temporary file!");
 	}
 	// Frequency counting and leaf making
-	while (fgets(buffer, blksize, in)) {
-		if (opts & STDIN || ~opts & FILEIN)
-			fputs(buffer, temp);
-		total += create_leafs(&buffer);
+	while ((c = fgetc(in)) != EOF){
+		fill_node((unsigned char) c);
+		total++;
 	}
 	if (ferror(temp))
 		error(3, 0, "Couldn't write to temporary file!");
 	free(buffer);
 	fclose(in);
 	// Tree growth
-	tip = (hub *) create_tree(chararray);
+	tip = create_tree(chararray);
 	return total;
 }
 
@@ -220,40 +210,32 @@ void calc_codes() {
 	}
 }
 
-compresscode * create_codetable(){
-	int i, j = 0;
-	compresscode this;
-	compresscode *table = calloc(CHAR+1, sizeof(compresscode));
-	for (i=0; i<CHAR; i++){
-		if (codetable[i]!=NULL){
-			this = (compresscode) {.code = codetable[i]->ch, .len = codetable[i]->len, .ch = i};
-			table[j++] = this;
-		}
-	}
-	table[CHAR+1].code = j;
-	return table;
+void write_meta(FILE * fout){
+	if ((opts & VERBOSE) && (opts & FILEOUT)) printf("0");
+	if (writebit(0)) error(3, 0, "Write error!");
+	int i;
+	for (i=0; i<3; i++) writebit(0);
+	recursive_write(tip);
+	if ((opts & VERBOSE) && (opts & FILEOUT)) printf("\n");
 }
 
-void write_meta(FILE * fout){
-/* *
- *  Header file should be:
- *  1 byte padding size (max pad size = 8)
- *  2 bytes for describing graph size
- *  n bytes for graph (array of n chars) // This should be possible with bits also?!
- *  m bytes for characters order (array of m chars)
- *  -------
- *  TOTAL about 2x
- *  REST
-*/
-
-
-	int padsize = outbuf_len;
-	outbuf_len = 0;
-	fputc(8-padsize, fout);
-	compresscode * table = create_codetable();
-	fputc(table[CHAR+1].code, fout);
-	fwrite(table, sizeof(compresscode), table[CHAR+1].code, fout);
-
+void recursive_write(hub * parent){
+	if (parent->left->type == 1){
+		if ((opts & VERBOSE) && (opts & FILEOUT)) printf("1%c", (signed char) ((leaf *) parent->left)->ch);
+		if (writebit(1) || write_char_bit(((leaf *) parent->left)->ch)) error(3, 0, "Write error!");
+	} else {
+		if ((opts & VERBOSE) && (opts & FILEOUT)) printf("0");
+		writebit(0);
+		recursive_write((hub *) parent->left);
+	}
+	if (parent->right->type == 1){
+		if ((opts & VERBOSE) && (opts & FILEOUT)) printf("1%c", (signed char) ((leaf *) parent->right)->ch);
+		if (writebit(1) || write_char_bit(((leaf *) parent->right)->ch)) error(3, 0, "Write error!");
+	} else {
+		if ((opts & VERBOSE) && (opts & FILEOUT)) printf("0");
+		writebit(0);
+		recursive_write((hub *) parent->right);
+	}
 }
 
 void compress() {
@@ -264,6 +246,7 @@ void compress() {
 	int i, j;
 	FILE * in, *out;
 	char * buffer = calloc(blksize, sizeof(char));
+	char c;
 	if (!buffer)
 		error(4, 0, "Cannot allocate memory!");
 	if (!writebuf)
@@ -277,18 +260,18 @@ void compress() {
 		rewind(in);
 	}
 	if (opts & FILEOUT) {
-		out = fopen(outputfile, "w");
+		out = fopen(outputfile, "w+");
 		if (!out)
 			error(3, 0, "Cannot open output file!");
 	} else
 		out = stdout;
+	setbitwrite(out);
 	write_meta(out);
-	while (fgets(buffer, blksize, in)) {
-		for (j = 0; buffer[j]; j++) {
-			fbitout(codetable[(unsigned char) buffer[j]], out);
-		}
+	while ((c = fgetc(in)) != EOF){
+		fbitout(codetable[(unsigned char) c], out);
 	}
 	pad(out);
+	writepadsize(out);
 	fclose(in);
 	fclose(out);
 }
