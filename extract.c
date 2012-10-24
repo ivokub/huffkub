@@ -26,7 +26,6 @@ void extract(){
 		goto close;
 	read_meta(in);
 	searchpointer = 0;
-
 	rep_bits(in, out, ctable);
 close:
 	fclose(in);

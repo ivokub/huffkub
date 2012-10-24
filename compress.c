@@ -187,6 +187,7 @@ int calc_prob() {
 			error(3, 0, "Cannot create temporary file!");
 	}
 	// Frequency counting and leaf making
+	if (test_empty(in)) return 0;
 	while ((c = fgetc(in)) != EOF){
 		fill_node((unsigned char) c);
 		total++;
@@ -198,6 +199,15 @@ int calc_prob() {
 	// Tree growth
 	tip = create_tree(chararray);
 	return total;
+}
+
+int test_empty(FILE * fin){
+	if (fgetc(fin) == EOF) return 1;
+	else {
+		rewind(fin);
+		return 0;
+	}
+
 }
 
 void calc_codes() {
@@ -239,7 +249,7 @@ void recursive_write(hub * parent){
 }
 
 void compress() {
-	calc_prob();
+	int nonempty = calc_prob();
 	calc_codes();
 	outbuf = 0;
 	writebuf = calloc(blksize, sizeof(char));
@@ -263,6 +273,7 @@ void compress() {
 		out = fopen(outputfile, "w+");
 		if (!out)
 			error(3, 0, "Cannot open output file!");
+		if (!nonempty) goto fclose;
 	} else
 		out = stdout;
 	setbitwrite(out);
@@ -272,6 +283,7 @@ void compress() {
 	}
 	pad(out);
 	writepadsize(out);
+fclose:
 	fclose(in);
 	fclose(out);
 }
