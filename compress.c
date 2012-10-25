@@ -45,7 +45,6 @@ void fill_node(unsigned char c) {
 		thisnode->type = 1;
                 thisnode->parent = &root;
 		chararray[c] = thisnode;
-		number_nodes++;
 	}
 	thisnode->ch = c;
 	thisnode->freq++;
