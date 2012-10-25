@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "bitlib.h"
 
 int setbitread(FILE * fin){
@@ -7,11 +8,17 @@ int setbitread(FILE * fin){
 	bitbuffer2 = calloc(8, sizeof(char));
 	char c;
 	int i;
+	eof_reached = 0;
 	fbitstream = fin;
 	c = fgetc(fbitstream);
 	if (feof(fbitstream)) return 1;
 	for (i=0; i<8; i++){
 		bitbuffer[i] = (c & (0x1 << i)) >> i;
+	}
+	c = fgetc(fbitstream);
+	if (feof(fbitstream)) return 1;
+	for (i=0; i<8; i++){
+		bitbuffer2[i] = (c & (0x1 << i)) >> i;
 	}
 	bitindex = 0;
 	for (i=0; i<3; i++){
@@ -24,14 +31,20 @@ int setbitread(FILE * fin){
 char readbit(){
 	char c;
 	int i;
-	if (bitindex == 8){
+	if (bitindex == 8 && !eof_reached){
 		c = fgetc(fbitstream);
-		if (feof(fbitstream)) return -1;
-		for (i=0; i<8; i++){
-			bitbuffer[i] = (c & (0x1 << i)) >> i;
+		if (feof(fbitstream)) {
+			eof_reached = 1;
+		}
+		memcpy(bitbuffer, bitbuffer2, 8*sizeof(char));
+		if (!eof_reached){
+			for (i=0; i<8; i++){
+				bitbuffer2[i] = (c & (0x1 << i)) >> i;
+				}
 		}
 		bitindex = 0;
 	}
+	if (eof_reached && padsize+bitindex == 8) return -1;
 	return bitbuffer[7-bitindex++];
 
 }

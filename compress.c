@@ -7,15 +7,6 @@
 #include "compress.h"
 #include "bitlib.h"
 
-int create_leafs(char * blob[]) {
-	int i;
-	int len = strlen(*blob);
-	for (i = 0; i < len; i++) {
-		fill_node((unsigned char) (*blob)[i]);
-	}
-	return i;
-}
-
 hub * create_hub(leaf * c1, leaf * c2) {
 	hub * thishub;
 	thishub = (hub *) malloc(sizeof(hub));
@@ -28,26 +19,18 @@ hub * create_hub(leaf * c1, leaf * c2) {
 
 hub * create_tree(leaf ** leafarray) {
 	int i;
-	node * tree[CHAR];
+	int full = 0;
+	node ** tree = calloc(CHAR, sizeof(node *));
 	hub * thishub;
 	memcpy(tree, leafarray, sizeof(void *) * CHAR);
-	int left = sort_leaf((leaf **) tree, CHAR);
+	qsort(tree, CHAR, sizeof(node *), node_cmp_ll);
 	while (tree[1] != NULL) {
 		thishub = create_hub((leaf *) tree[0], (leaf *) tree[1]);
 		tree[0]->parent = (node *) thishub;
 		tree[1]->parent = (node *) thishub;
 		tree[0] = NULL;
-		tree[1] = NULL;
-		int k, j = 1;
-		// move only previous nodes one entry forward and then tree = &tree[1] ?
-		while (j + 1 < left && (thishub->freq >= tree[j + 1]->freq))
-			j++;
-		for (k = 2; k <= j; k++)
-			tree[k - 2] = tree[k];
-		tree[j - 1] = (node *) thishub;
-		for (k = j + 1; k < left; k++)
-			tree[k - 1] = tree[k];
-		tree[left--] = NULL;
+		tree[1] = (node *) thishub;
+		qsort(tree, CHAR, sizeof(node *), node_cmp_ll);
 	}
 	// should free tree array
 	return (hub *) tree[0];
@@ -62,6 +45,7 @@ void fill_node(unsigned char c) {
 		thisnode->type = 1;
                 thisnode->parent = &root;
 		chararray[c] = thisnode;
+		number_nodes++;
 	}
 	thisnode->ch = c;
 	thisnode->freq++;
@@ -69,44 +53,14 @@ void fill_node(unsigned char c) {
 }
 
 int node_cmp_ll(const void *c1, const void *c2) {
-	if (*(void **) c1 == NULL) return -1;
-	if (*(void **) c2 == NULL) return 1;
-	if ((*(node **) c1)->type == 1){
-		if ((*(leaf **) c1)->ch == 255) return -1;
-	}
-	if ((*(node **) c2)->type == 1){
-		if ((*(leaf **) c2)->ch == 255) return 1;
-	}
+	if (*(void **) c1 == NULL) return 1;
+	if (*(void **) c2 == NULL) return -1;
 	if ((*(node **) c1)->freq > (*(node **) c2)->freq)
 		return 1;
 	else if ((*(node **) c1)->freq < (*(node **) c2)->freq)
 		return -1;
 	else
 		return 0;
-}
-
-int clean_leaf_array(leaf ** leafarray, int total) {
-	int i, freeleaf = 0;
-	for (i = 0; i < total; i++) {
-		if (leafarray[i] != NULL) {
-			if (freeleaf != i) {
-				leafarray[freeleaf] = leafarray[i];
-				leafarray[i] = NULL;
-				freeleaf++;
-			}
-		}
-	}
-	return freeleaf;
-}
-
-int sort_leaf(leaf * leafarray[], int length) {
-	int unique = 0;
-	qsort(leafarray, length, sizeof(leaf *), node_cmp_ll);
-	int total = clean_leaf_array(leafarray, length);
-	while (leafarray[unique] != NULL) {
-		unique++;
-	}
-	return unique;
 }
 
 code * calc_code(leaf * bytechar) {
@@ -154,23 +108,10 @@ int fbitout(code * letter, FILE * fout){
 	return 0;
 }
 
-//void append_char(char ch, FILE * fout) {
-//	int i = 0;
-//	int j = 0;
-//	while (writebuf[i] != 0)   // if we save index then we don't have to look for null pointer and fill the array with nulls
-//		i++;
-//	if (i == blksize) {
-//		fwrite(writebuf, sizeof(char), blksize, fout);
-//		for (j = 0; j < blksize; writebuf[j++] = 0);
-//		i = 0;
-//	}
-//	writebuf[i] = ch;
-//}
-
 int calc_prob() {
 	// Streams opening
 	char * buffer = calloc(blksize, sizeof(char));
-	char c;
+	unsigned char c;
 	if (!buffer)
 		error(4, 0, "Cannot allocate memory!");
 	FILE *in;
@@ -188,8 +129,9 @@ int calc_prob() {
 	}
 	// Frequency counting and leaf making
 	if (test_empty(in)) return 0;
-	while ((c = fgetc(in)) != EOF){
-		fill_node((unsigned char) c);
+	while ((c = (unsigned char) fgetc(in)) | 1){
+		if (feof(in)) break;
+		fill_node(c);
 		total++;
 	}
 	if (ferror(temp))
@@ -256,30 +198,27 @@ void compress() {
 	int i, j;
 	FILE * in, *out;
 	char * buffer = calloc(blksize, sizeof(char));
-	char c;
-	if (!buffer)
-		error(4, 0, "Cannot allocate memory!");
-	if (!writebuf)
-		error(4, 0, "Cannot allocate memory!");
+	unsigned char c;
+	if (!buffer) error(4, 0, "Cannot allocate memory!");
+	if (!writebuf)	error(4, 0, "Cannot allocate memory!");
 	if (opts & FILEIN) {
 		in = fopen(inputfile, "r");
-		if (!in)
-			error(3, 0, "Cannot open input file!");
+		if (!in) error(3, 0, "Cannot open input file!");
 	} else {
 		in = temp;
 		rewind(in);
 	}
 	if (opts & FILEOUT) {
 		out = fopen(outputfile, "w+");
-		if (!out)
-			error(3, 0, "Cannot open output file!");
+		if (!out) error(3, 0, "Cannot open output file!");
 		if (!nonempty) goto fclose;
 	} else
 		out = stdout;
 	setbitwrite(out);
 	write_meta(out);
-	while ((c = fgetc(in)) != EOF){
-		fbitout(codetable[(unsigned char) c], out);
+	while (1 | (c = (unsigned char) fgetc(in))){
+		if (feof(in)) break;
+		fbitout(codetable[ c], out);
 	}
 	pad(out);
 	writepadsize(out);

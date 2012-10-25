@@ -16,4 +16,4 @@ bitlib.o: bitlib.c bitlib.h
 	gcc -g -c bitlib.c
 
 clean:
-	rm huffkub.o compress.o extract.o huffkub
+	rm huffkub.o compress.o extract.o huffkub bitlib.o
