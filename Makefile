@@ -1,19 +1,26 @@
+compiled = huffkub.o compress.o extract.o bitlib.o
+args = -g
+
 all: huffkub
 
-huffkub: huffkub.o compress.o extract.o bitlib.o
-	gcc -g huffkub.o compress.o extract.o bitlib.o -o huffkub
+huffkub: $(compiled)
+	gcc $(args) $(compiled) -o huffkub
 
 huffkub.o: huffkub.c struct.h huffkub.h
-	gcc -g -c huffkub.c
+	gcc $(args) -c huffkub.c
 
 compress.o: compress.c struct.h huffkub.h
-	gcc -g -c compress.c
+	gcc $(args) -c compress.c
 
 extract.o: extract.c huffkub.h
-	gcc -g -c extract.c
+	gcc $(args) -c extract.c
 	
 bitlib.o: bitlib.c bitlib.h
-	gcc -g -c bitlib.c
+	gcc $(args) -c bitlib.c
 
 clean:
-	rm huffkub.o compress.o extract.o huffkub bitlib.o
+	rm $(compiled)
+
+distclean: clean
+	rm huffkub
+
