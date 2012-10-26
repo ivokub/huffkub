@@ -10,7 +10,7 @@
 #define VARIABLES
 int blksize;
 short int opts;
-char inputfile[32], outputfile[32];
+char inputfile[128], outputfile[128];
 #endif
 
 void parse_args(int, char **);

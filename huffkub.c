@@ -3,7 +3,6 @@
 //			((leaf *) p)->ch, but there must be a more beautiful way?
 //		oneletter_ failing
 //		packing output to stdout failing
-//		long file names failing
 
 #include <stdio.h>
 #include "struct.h"
@@ -44,13 +43,13 @@ void parse_args(int argc, char **argv) {
 			if (opts & STDIN)
 				error(2, 0, "-f and -i are exclusive");
 			opts |= FILEIN;
-			strncpy(inputfile, optarg, 32);
+			strncpy(inputfile, optarg, 128);
 			break;
 		case 'd':
 			if (opts & STDOUT)
 				error(2, 0, "-d and -o are exclusive");
 			opts |= FILEOUT;
-			strncpy(outputfile, optarg, 32);
+			strncpy(outputfile, optarg, 128);
 			break;
 		case 'v':
 			opts |= VERBOSE;
