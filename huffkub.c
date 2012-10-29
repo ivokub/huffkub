@@ -2,7 +2,6 @@
 // 			eg. if p is pointer to node, then I am using:
 //			((leaf *) p)->ch, but there must be a more beautiful way?
 //		oneletter_ failing
-//		packing output to stdout failing
 
 #include <stdio.h>
 #include "struct.h"

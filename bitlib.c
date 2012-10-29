@@ -87,13 +87,5 @@ char pad(FILE * fout){
 	return 0;
 }
 
-int writepadsize(FILE * fout){
-	rewind(fout);
-	int c = fgetc(fout);
-	rewind(fout);
-	fputc(c|(padsize<<5), fout);
-	return padsize;
-}
-
 
 

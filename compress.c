@@ -14,6 +14,7 @@ hub * create_hub(leaf * c1, leaf * c2) {
 		error(4, 0, "Cannot allocate memory!");
 	*thishub = (hub) {.type = 2, .parent = &root, .left = (node *) c1, .right = (node *) c2,
 				.freq = c1->freq + c2->freq};
+	hubcount++;
 	return thishub;
 }
 
@@ -45,6 +46,7 @@ void fill_node(unsigned char c) {
 		thisnode->type = 1;
                 thisnode->parent = &root;
 		chararray[c] = thisnode;
+		leafcount++;
 	}
 	thisnode->ch = c;
 	thisnode->freq++;
@@ -115,6 +117,7 @@ int calc_prob() {
 		error(4, 0, "Cannot allocate memory!");
 	FILE *in;
 	int total = 0;
+	tempsize = 0;
 	if (opts & FILEIN) {
 		in = fopen(inputfile, "r");
 		if (!in)
@@ -129,6 +132,10 @@ int calc_prob() {
 	// Frequency counting and leaf making
 	if (test_empty(in)) return 0;
 	while ((c = (unsigned char) fgetc(in)) | 1){
+		if (opts & STDIN) {
+			fputc(c, temp);
+			tempsize++;
+		}
 		if (feof(in)) break;
 		fill_node(c);
 		total++;
@@ -136,6 +143,7 @@ int calc_prob() {
 	if (ferror(temp))
 		error(3, 0, "Couldn't write to temporary file!");
 	free(buffer);
+	if (opts & STDIN) fflush(temp);
 	fclose(in);
 	// Tree growth
 	tip = create_tree(chararray);
@@ -162,10 +170,15 @@ void calc_codes() {
 }
 
 void write_meta(FILE * fout){
-	if ((opts & VERBOSE) && (opts & FILEOUT)) printf("0");
-	if (writebit(0)) error(3, 0, "Write error!");
 	int i;
-	for (i=0; i<3; i++) writebit(0);
+	unsigned char outpadsize = 0;
+	outpadsize = 8 - (3+9*leafcount+hubcount+outbuf_len) % 8;
+	for (i=0; i<3; i++) {
+		writebit(0x1&(outpadsize>>(2-i)));
+		if ((opts & VERBOSE) && (opts & FILEOUT)) printf("%d", 0x1&(outpadsize>>(2-i)));
+	}
+	writebit(0);
+	if ((opts & VERBOSE) && (opts & FILEOUT)) printf("0");
 	recursive_write(tip);
 	if ((opts & VERBOSE) && (opts & FILEOUT)) printf("\n");
 }
@@ -190,11 +203,13 @@ void recursive_write(hub * parent){
 }
 
 void compress() {
+	hubcount = 0;
+	leafcount = 0;
 	int nonempty = calc_prob();
 	calc_codes();
 	outbuf = 0;
 	writebuf = calloc(blksize, sizeof(char));
-	int i, j;
+	int i;
 	FILE * in, *out;
 	char * buffer = calloc(blksize, sizeof(char));
 	unsigned char c;
@@ -211,17 +226,24 @@ void compress() {
 		out = fopen(outputfile, "w+");
 		if (!out) error(3, 0, "Cannot open output file!");
 		if (!nonempty) goto fclose;
-	} else
+	} else {
 		out = stdout;
+		if (!nonempty) goto fclose;
+	}
 	setbitwrite(out);
 	write_meta(out);
 	while (1 | (c = (unsigned char) fgetc(in))){
 		if (feof(in)) break;
+		if (opts & STDIN){
+			if (i==tempsize) break;
+			i++;
+		}
 		fbitout(codetable[ c], out);
 	}
 	pad(out);
-	writepadsize(out);
+//	writepadsize(out);
 fclose:
+    fflush(out);
 	fclose(in);
 	fclose(out);
 }

@@ -16,9 +16,12 @@ void recursive_write(hub *);
 	hub * tip;
 
 	char outbuf;
-	short int outbuf_len;
+	int outbuf_len;
 	char * writebuf;
 	FILE * temp;
 	code * calc_code(leaf *);
 	code * codetable[CHAR];
+	int hubcount;
+	int leafcount;
+	long int tempsize;
 #endif
