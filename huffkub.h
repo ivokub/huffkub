@@ -16,3 +16,6 @@ char inputfile[128], outputfile[128];
 void parse_args(int, char **);
 int main(int, char **);
 void verbose_print();
+void print_tree1(node *);
+void print_tree(node *);
+int sanitize(unsigned char);

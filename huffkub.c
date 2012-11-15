@@ -9,6 +9,7 @@
 #include <getopt.h>
 #include <string.h>
 #include <error.h>
+#include <unistd.h>
 #include "huffkub.h"
 #include "compress.h"
 #include "extract.h"
@@ -85,18 +86,72 @@ int main(int argc, char **argv) {
 	if (opts & UNPACK) {
 		extract();
 	}
-	if ((opts & VERBOSE) && (opts & FILEOUT))
+	if (opts & VERBOSE) {
+		print_tree1((node* ) tip);
 		verbose_print();
+	}
 	return 0;
 }
 
 void verbose_print() {
 	int i = 0;
-	printf("CHAR\tFREQ\tCODE\n");
+	fprintf(stderr, "/*\nCHAR\tFREQ\tCODE\n");
 	for (i = 0; i < CHAR; i++) {
 		if (chararray[i] != NULL) {
-			printf("%c\t%d\t", chararray[i]->ch, chararray[i]->freq);
+			fprintf(stderr, "%c\t%d\t", chararray[i]->ch, chararray[i]->freq);
 			print_code(calc_code(chararray[i]));
 		}
+	}
+	fprintf(stderr, "\n*/");
+}
+
+void print_tree(node * rr) {
+	leaf *l,*r;
+	if (rr->type == 2) {
+		fprintf(stderr, "\t\"%p\" [shape=record,label=\"%p|%d\"]\n ", rr, rr, rr->freq);
+		if ( (((hub *) rr)->left)->type == 1){
+			l = ( (leaf *) ((hub *) rr)->left);
+			if (sanitize(l->ch))
+				fprintf(stderr, "\t\"%p\" [shape=record,label=\"char(%d)|%d\"]\n ", l, (int) l->ch, l->freq);
+			else
+				fprintf(stderr, "\t\"%p\" [shape=record,label=\"%c|%d\"]\n ", l, l->ch, l->freq);
+			fprintf(stderr, "\t\"%p\" -> \"%p\";\n", rr, l);
+		} else {
+			fprintf(stderr, "\t\"%p\" -> \"%p\";\n", rr, ((hub *) rr)->left);
+		}
+		print_tree(((hub *) rr)->left);
+		if ( (((hub *) rr)->right)->type == 1){
+			r = ( (leaf *) ((hub *) rr)->right);
+			if (sanitize(r->ch))
+				fprintf(stderr, "\t\"%p\" [shape=record,label=\"char(%d)|%d\"]\n ", r, (int) r->ch, r->freq);
+			else
+				fprintf(stderr, "\t\"%p\" [shape=record,label=\"%c|%d\"]\n ", r, r->ch, r->freq);
+			fprintf(stderr, "\t\"%p\" -> \"%p\";\n", rr, r);
+		} else {
+			fprintf(stderr, "\t\"%p\" -> \"%p\";\n", rr, ((hub *) rr)->right);
+		}
+		print_tree(((hub *) rr)->right);
+	}
+}
+void print_tree1(node * rr) {
+	fprintf(stderr, "digraph bt {\n"
+				"\trandkir = LR;\n");
+	print_tree(rr);
+	fprintf(stderr, "}\n");
+}
+
+int sanitize(unsigned char c) {
+	switch ((signed char) c){
+		case 10:
+		case '"':
+		case '|':
+		case ' ':
+		case '<':
+		case '>':
+		case 0:
+			return 1;
+			break;
+		default:
+			return 0;
 	}
 }

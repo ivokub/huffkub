@@ -92,11 +92,11 @@ void print_code(code * bytecode) {
 	int i = 0, bitcode = bytecode->ch;
 
 	while (i < bytecode->len) {
-		printf("%d", bitcode % 2);
+		fprintf(stderr, "%d", bitcode % 2);
 		bitcode /= 2;
 		i++;
 	}
-	printf("\n");
+	fprintf(stderr, "\n");
 }
 
 int fbitout(code * letter, FILE * fout){
@@ -173,30 +173,31 @@ void write_meta(FILE * fout){
 	int i;
 	unsigned char outpadsize = 0;
 	outpadsize = 8 - (3+9*leafcount+hubcount+outbuf_len) % 8;
+	if (opts & VERBOSE) fprintf(stderr, "/*");
 	for (i=0; i<3; i++) {
 		writebit(0x1&(outpadsize>>(2-i)));
-		if ((opts & VERBOSE) && (opts & FILEOUT)) printf("%d", 0x1&(outpadsize>>(2-i)));
+		if ((opts & VERBOSE)) fprintf(stderr, "%d", 0x1&(outpadsize>>(2-i)));
 	}
 	writebit(0);
-	if ((opts & VERBOSE) && (opts & FILEOUT)) printf("0");
+	if (opts & VERBOSE) fprintf(stderr, "0");
 	recursive_write(tip);
-	if ((opts & VERBOSE) && (opts & FILEOUT)) printf("\n");
+	if (opts & VERBOSE) fprintf(stderr, "\n*/\n");
 }
 
 void recursive_write(hub * parent){
 	if (parent->left->type == 1){
-		if ((opts & VERBOSE) && (opts & FILEOUT)) printf("1%c", (signed char) ((leaf *) parent->left)->ch);
+		if (opts & VERBOSE) fprintf(stderr, "1%c", (signed char) ((leaf *) parent->left)->ch);
 		if (writebit(1) || write_char_bit(((leaf *) parent->left)->ch)) error(3, 0, "Write error!");
 	} else {
-		if ((opts & VERBOSE) && (opts & FILEOUT)) printf("0");
+		if (opts & VERBOSE) fprintf(stderr, "0");
 		writebit(0);
 		recursive_write((hub *) parent->left);
 	}
 	if (parent->right->type == 1){
-		if ((opts & VERBOSE) && (opts & FILEOUT)) printf("1%c", (signed char) ((leaf *) parent->right)->ch);
+		if (opts & VERBOSE) fprintf(stderr, "1%c", (signed char) ((leaf *) parent->right)->ch);
 		if (writebit(1) || write_char_bit(((leaf *) parent->right)->ch)) error(3, 0, "Write error!");
 	} else {
-		if ((opts & VERBOSE) && (opts & FILEOUT)) printf("0");
+		if (opts & VERBOSE) fprintf(stderr, "0");
 		writebit(0);
 		recursive_write((hub *) parent->right);
 	}
