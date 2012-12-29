@@ -107,12 +107,15 @@ void verbose_print() {
 
 void print_tree(node * rr) {
 	leaf *l,*r;
+	int printmode;
 	if (rr->type == 2) {
 		fprintf(stderr, "\t\"%p\" [shape=record,label=\"%p|%d\"]\n ", rr, rr, rr->freq);
 		if ( (((hub *) rr)->left)->type == 1){
 			l = ( (leaf *) ((hub *) rr)->left);
-			if (sanitize(l->ch))
-				fprintf(stderr, "\t\"%p\" [shape=record,label=\"char(%d)|%d\"]\n ", l, (int) l->ch, l->freq);
+			if ((printmode = sanitize(l->ch)) == 1)
+				fprintf(stderr, "\t\"%p\" [shape=record,label=\"\\%c|%d\"]\n ", l, l->ch, l->freq);
+			else if (printmode ==2)
+				fprintf(stderr, "\t\"%p\" [shape=record,label=\"\\\\%d|%d\"]\n ", l, (int) l->ch, l->freq);
 			else
 				fprintf(stderr, "\t\"%p\" [shape=record,label=\"%c|%d\"]\n ", l, l->ch, l->freq);
 			fprintf(stderr, "\t\"%p\" -> \"%p\";\n", rr, l);
@@ -122,8 +125,10 @@ void print_tree(node * rr) {
 		print_tree(((hub *) rr)->left);
 		if ( (((hub *) rr)->right)->type == 1){
 			r = ( (leaf *) ((hub *) rr)->right);
-			if (sanitize(r->ch))
-				fprintf(stderr, "\t\"%p\" [shape=record,label=\"char(%d)|%d\"]\n ", r, (int) r->ch, r->freq);
+			if ((printmode = sanitize(r->ch)) == 1)
+				fprintf(stderr, "\t\"%p\" [shape=record,label=\"\\%c|%d\"]\n ", r, r->ch, r->freq);
+			else if (printmode == 2)
+				fprintf(stderr, "\t\"%p\" [shape=record,label=\"\\\\%d|%d\"]\n ", r, (int) r->ch, r->freq);
 			else
 				fprintf(stderr, "\t\"%p\" [shape=record,label=\"%c|%d\"]\n ", r, r->ch, r->freq);
 			fprintf(stderr, "\t\"%p\" -> \"%p\";\n", rr, r);
@@ -141,6 +146,8 @@ void print_tree1(node * rr) {
 }
 
 int sanitize(unsigned char c) {
+	if ((signed char) c < 32 || (signed char) c > 126)
+		return 2;
 	switch ((signed char) c){
 		case 10:
 		case '"':
@@ -148,6 +155,8 @@ int sanitize(unsigned char c) {
 		case ' ':
 		case '<':
 		case '>':
+		case '{':
+		case '}':
 		case 0:
 			return 1;
 			break;
